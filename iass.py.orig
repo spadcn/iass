@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+
+import os
+import re
+from glob import glob
+import random
+import string
+import platform
+from time import sleep
+import subprocess
+import tkinter as tk
+from tkinter import messagebox
+import tkinter.font as tf
+from tkinter import filedialog as fd
+from functools import partial
+from utils import imessage,nmessage,change_workdir,imgconvert,run_as_child,get_settings,run_as_thread
+from rename import rename_files
+from shutil import copy,move,rmtree
+
+iass_settings = get_settings()
+
+debug = False
+
+def extract(wd, archivefiles, rename=False):
+    if not change_workdir(wd):
+        return False
+    fpatterns = archivefiles.get().split(',')
+    files = []
+    for fpt in fpatterns:
+        files.extend(glob(fpt))
+    for file in files:
+        if rename == True:
+            if platform.system() == 'Windows':
+                p = subprocess.Popen(["python", iass_settings.clicmd, "-u", file])
+            else:
+                p = subprocess.Popen([iass_settings.clicmd, "-u", file])
+            #p = subprocess.Popen([iass_settings.clicmd, "-u", file], stdout= subprocess.PIEP, stdin =  subprocess.PIPE, stderr = subprocess.PIPE)
+        else:
+            if platform.system() == 'Windows':
+                p = subprocess.Popen(["python", iass_settings.clicmd, file])
+            else:
+                p = subprocess.Popen([iass_settings.clicmd, file])
+
+            #p = subprocess.Popen([iass_settings.clicmd, file], stdout= subprocess.PIPE, stdin =  subprocess.PIPE, stderr = subprocess.PIPE)
+
+rnWindow = tk.Tk()
+rnWindow.title("艾辟谷")
+fields = {'pattern': '文件名串',
+        'replacement': '新文件名',
+        'imgext': '图像转换',
+        'archivefiles': '文件列表',
+        'directory': '工作目录'}
+btfontStyle = tf.Font(root=rnWindow, family="Lucida Grand", size=10)
+lbfontStyle = tf.Font(root=rnWindow, family="Lucida Grand", size=12)
+
+repdic = {}
+from tkinter.ttk import *
+from progressbar import *
+
+xprogress = Iprogress(rnWindow)
+xprogress.enable_progressbar(8)
+
+wdlabel = tk.Label(rnWindow, text=fields['directory'], font=lbfontStyle).grid(row=0, column=0)
+workdir = tk.StringVar(rnWindow, value=iass_settings.workdir)
+wdentry= tk.Entry(rnWindow, textvariable=workdir, font=lbfontStyle).grid(row=0, column=1)  
+
+eflabel = tk.Label(rnWindow, text=fields['archivefiles'], font=lbfontStyle).grid(row=1, column=0)
+archivefiles = tk.StringVar(rnWindow, value=iass_settings.filepattern)
+efentry= tk.Entry(rnWindow, textvariable=archivefiles, font=lbfontStyle).grid(row=1, column=1)  
+extract1 = tk.Button(rnWindow, text="文件提取", command=partial(extract, workdir, archivefiles), width=iass_settings.button_width, height=iass_settings.button_height, font=btfontStyle).grid(row=2, column=0)  
+extract2 = tk.Button(rnWindow, text="提取改名", command=partial(extract, workdir, archivefiles, rename=True), width=iass_settings.button_width, height=iass_settings.button_height, font=btfontStyle).grid(row=2, column=1)  
+
+imglabel = tk.Label(rnWindow, text=fields['imgext'], font=lbfontStyle).grid(row=3, column=0)
+imgpatterns = tk.StringVar(rnWindow, value="HEIC,heic|jpg")
+imconverter = tk.Button(rnWindow, text="开始转换", command=partial(run_as_thread, imgconvert, (workdir, imgpatterns, xprogress)), width=iass_settings.button_width, height=iass_settings.button_height, font=btfontStyle).grid(row=4, column=0)
+imgentry = tk.Entry(rnWindow, textvariable=imgpatterns, font=lbfontStyle).grid(row=4, column=1)  
+
+ptlabel = tk.Label(rnWindow, text=fields['pattern'], font=lbfontStyle).grid(row=5, column=0)
+pattern = tk.StringVar()
+ptentry = tk.Entry(rnWindow, textvariable=pattern, font=lbfontStyle).grid(row=5, column=1)  
+rplabel = tk.Label(rnWindow, text=fields['replacement'], font=lbfontStyle).grid(row=6, column=0)
+replacement = tk.StringVar()
+rppattern = tk.Entry(rnWindow, textvariable=replacement, font=lbfontStyle).grid(row=6, column=1)  
+
+rename = tk.Button(rnWindow, text="批量改名", command=partial(rename_files, workdir, pattern, replacement), width=iass_settings.button_width, height=iass_settings.button_height, font=btfontStyle).grid(row=7, column=0)  
+quit1 = tk.Button(rnWindow, text="退出程序", command=rnWindow.destroy, width=iass_settings.button_width, height=iass_settings.button_height, font=btfontStyle).grid(row=7, column=1)  
+#pblabel = tk.Label(rnWindow, text="Progress", width=iass_settings.button_width, height=iass_settings.button_height, font=btfontStyle).grid(row=8, column=0)
+#pbbar = tk.Button(rnWindow, text="& rename", command=partial(extract, workdir, archivefiles, rename=True), width=iass_settings.button_width, height=iass_settings.button_height, font=btfontStyle).grid(row=8, column=1)
+
+rnWindow.mainloop()
+
